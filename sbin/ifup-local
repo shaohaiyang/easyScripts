@@ -1,0 +1,57 @@
+#!/bin/sh
+get_network () {
+echo $@ | awk 'BEGIN{FS="[./]";OFS="."}
+    END{
+        print and($1,$5),and($2,$6),and($3,$7),and($4,$8)
+    }'
+}
+################################################################################
+# add policy route scripts here
+if [ -f "/etc/policy_start" ];then
+	echo $1|grep -q ":"
+	[ $? = 0 ] && exit 0
+
+	[ ! -s /etc/sysconfig/network-scripts/ifcfg-$1 ] && exit 0
+
+	if [ X"$1" = "X" ];then
+		CONF="eth*"	
+	else
+		CONF=$1"*"
+	fi
+j=0
+NUM=`echo $CONF|sed 's:[^0-9]*\([0-9]*\).*:\1:g'`
+NUM=$((NUM + 1))
+for i in /etc/sysconfig/network-scripts/ifcfg-$CONF;do
+        DEV=`sed -n '/DEVICE/p' $i|awk -F'=' '{print $2}'`
+        PROTO=`sed -n '/BOOTPROTO/p' $i|awk -F'=' '{print $2}'`
+        BOOT=`sed -n '/ONBOOT/p' $i|awk -F'=' '{print $2}'|tr 'A-Z' 'a-z'`
+        if [ "$PROTO" = "dhcp" ];then
+                i="/etc/dhcpc/dhcpcd-$DEV.info"
+        	BOOT="yes"
+        fi
+        IP=`sed -n '/IPADDR/p' $i|awk -F'=' '{print $2}'`
+        GW=`sed -n '/GATE/p' $i|awk -F'=' '{print $2}'`
+        MASK=`sed -n '/MASK/p' $i|awk -F'=' '{print $2}'`
+        if [ ! -z "$GW" -a "$BOOT" = "yes" ];then
+                HOST=`get_network $IP/$MASK`
+                MASK=`get_mask $MASK`
+                NET=$HOST/$MASK
+                TAB=$((NUM * 10 + (j++)))
+                sed -r -i "/$TAB/d" /etc/iproute2/rt_tables
+                echo "$TAB      $DEV-NET" >> /etc/iproute2/rt_tables
+                DEV=`echo $DEV|sed 's/\([^:]*\).*/\1/'`
+                ip ro fl table $TAB
+                ip ro re default via $GW
+                ip ro re default via $GW table $TAB
+                ip ro re $NET src $IP dev $DEV table $TAB
+                ip ru del from $IP prio $TAB
+                ip ru add from $IP table $TAB prio $TAB
+                #ip ru add to $NET table $TAB prio $TAB
+        fi
+done
+	ip ro fl ca
+else
+	ip ru fl
+	ip ru add prio 32766
+	ip ro fl ca
+fi

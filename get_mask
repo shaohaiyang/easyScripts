@@ -1,0 +1,14 @@
+#!/bin/sh
+get_mask () {
+        unset mask
+        while [ "$1" ]; do
+                bit=$(echo "obase=2;ibase=10;$1" |bc)
+                shift
+                mask="$mask$bit"
+        done
+        mask=${mask%%0*}
+        echo ${#mask}
+}
+
+maskpart=${@##*/}
+echo "$(get_mask ${maskpart//./ })"

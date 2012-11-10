@@ -1,0 +1,10 @@
+#!/bin/sh
+IFS=#
+for i in `ip ru|grep $1|grep from|sed -n 's:[^from]*\(.*\)lookup.*:ip ru del \1#:p'`;do
+	eval $i
+done
+for i in `ip ru|grep $1|grep to|sed -n 's:[^t]*\(.*\)lookup.*:ip ru del \1#:p'`;do
+	eval $i
+done
+sed -i "/$1.*NET/d" /etc/iproute2/rt_tables
+IFS=
