@@ -1,0 +1,9 @@
+nc:
+tar:
+wget:
+lldpd:
+screen:
+rsyslog:
+pciutils:
+bind-utils:
+vim-enhanced:

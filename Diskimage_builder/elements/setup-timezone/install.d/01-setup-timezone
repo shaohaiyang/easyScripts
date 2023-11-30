@@ -1,0 +1,14 @@
+#!/bin/bash
+
+if [ ${DIB_DEBUG_TRACE:-0} -gt 0 ]; then
+    set -x
+fi
+set -eu
+set -o pipefail
+
+# Set timezone
+if [ -n "${TIMEZONE}" ]; then
+    sudo rm /etc/localtime
+    sudo ln -s /usr/share/zoneinfo/$TIMEZONE /etc/localtime
+    echo "$TIMEZONE" | sudo tee /etc/timezone
+fi
